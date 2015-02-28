@@ -1,79 +1,200 @@
 <!DOCTYPE html>
 <html>
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+	<script src="http://libs.baidu.com/jquery/1.9.0/jquery.js"></script>
+	<script src="jquery.hotkeys.js"></script>
+	<script src="key_status.js"></script>	
+	<script type="text/javascript">
+		// 初始化
+		Number.prototype.clamp = function(min, max) {return Math.min(Math.max(this, min), max);};
+		var canvas_width=480;
+		var canvas_height=320;
+		var canvas_Element=$("<canvas width='"+canvas_width+"' height='"+canvas_height+"'>");
+		var canvas=canvas_Element.get(0).getContext("2d");
+		canvas_Element.appendTo("body");
+		// 游戏循环
+		var FPS=30;
+		setInterval(function(){
+			update();
+			draw();
+		},1000/FPS);
+		
+		// 创建player
+		var player={
+			color:"#00a",
+			x:270,
+			y:270,
+			width:50,
+			height:50,
+			imgUrl:"2.png",
+			draw:function(){
+				var img=new Image();
+				img.src=this.imgUrl;
+				//canvas.fillStyle=this.color;
+				canvas.drawImage(img,this.x,this.y,this.width,this.height);
+			}
+		}
 
-  <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="Testdemo : test demo">
+		player.explode = function() {
+  			this.active = false;
+		};
+		
+		// 炮弹
+		var playerBullets=[];
+		function Bullet(I){
+			I.active=true;
+			I.xVelocity=0;
+			I.yVelocity=-I.speed;
+			I.width=3;
+			I.height=3;
+			I.color="#000";
 
-    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+			I.inBounds=function(){
+				return I.x>=0&&I.x<=canvas_width&&I.y>=0&&I.y<=canvas_height;
+			};
 
-    <title>Testdemo</title>
-  </head>
+			I.draw=function(){
+				canvas.fillStyle=this.color;
+				canvas.fillRect(this.x,this.y,this.width,this.height);
+			};
 
-  <body>
+			I.update=function(){
+				I.x+=I.xVelocity;
+				I.y+=I.yVelocity;
 
-    <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/IM66/testdemo">View on GitHub</a>
+				I.active=I.active&&I.inBounds();
+			};
 
-          <h1 id="project_title">Testdemo</h1>
-          <h2 id="project_tagline">test demo</h2>
+			return I;
+		}
+		// 开火
+		player.shoot=function(){
+			var bulletPosition=this.midpoint();
 
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/IM66/testdemo/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/IM66/testdemo/tarball/master">Download this project as a tar.gz file</a>
-            </section>
-        </header>
-    </div>
+			playerBullets.push(Bullet({
+				speed:5,
+				x:bulletPosition.x,
+				y:bulletPosition.y,
+			}));
+		};
 
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
-        <ul>
-<li>### Welcome to GitHub Pages.
-This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</li>
-</ul>
+		player.midpoint=function(){
+			return{
+				x:this.x+this.width/2,
+				y:this.y
+			};
+		};
+		// 敌人
+		var enemies=[];
+		function Enemy(I){
+			I=I||{};
+			I.active=true;
+			I.age=Math.floor(Math.random()*128);
+			//I.color="#a2b";
+			I.x=canvas_width/4+Math.random()*canvas_width/2;
+			I.y=0;
+			I.xVelocity=0;
+			I.yVelocity=2;
+			I.width=32;
+			I.height=32;
+			I.img= new Image();
+			I.img.src="0.png";
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
-</code></pre>
+			I.inBounds=function(){
+				return I.x>=0&&I.x<=canvas_width&&I.y>=0&&I.y<=canvas_height;
+			};
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+			I.explode=function(){
+				this.active=false;
+			};
 
-<h3>
-<a id="designer-templates" class="anchor" href="#designer-templates" aria-hidden="true"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
+			I.draw=function(){
+				// canvas.fillStyle=this.color;
+				canvas.drawImage(this.img,this.x,this.y,this.width,this.height);
+			};
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+			I.update=function(){
+				I.x+=I.xVelocity;
+				I.y+=I.yVelocity;
 
-<h3>
-<a id="rather-drive-stick" class="anchor" href="#rather-drive-stick" aria-hidden="true"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
+				I.xVelocity=3*Math.sin(I.age*Math.PI/64);
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+				I.age++;
 
-<h3>
-<a id="authors-and-contributors" class="anchor" href="#authors-and-contributors" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
+				I.active=I.active&&I.inBounds();
+			};
+			return I;
+		};
+		// 检测碰撞
+		function collides(a,b){
+			return a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
+		};
+		function handleCollisions(){
+			playerBullets.forEach(function(bullet){
+				enemies.forEach(function(enemy){
+					if(collides(bullet,enemy)){
+						enemy.explode();
+						bullet.active=false;
+					}
+				});
+			});
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+			enemies.forEach(function(enemy){
+				if (collides(enemy,player)) {
+					enemy.explode();
+					player.explode();
+				};
+			})
+		}
+		// 绘制
+		function draw(){
+			canvas.clearRect(0,0,canvas_width,canvas_height);
+			player.draw();
+			playerBullets.forEach(function(bullet){
+				bullet.draw();  
+			});
+			enemies.forEach(function(enemy){
+				enemy.draw();  
+			});
+		}
+		// 重绘
+		function update(){
+			if (keydown.left) {
+				player.x-=4;
+			}
+			if (keydown.right) {
+				player.x+=4;
+			}
+			if (keydown.space) {
+				player.shoot();
+			}
+			player.x=player.x.clamp(0,canvas_width-player.width);
 
-<h3>
-<a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
+			playerBullets.forEach(function(bullet){
+				bullet.update();
+			});
+			playerBullets=playerBullets.filter(function(bullet){
+				return bullet.active;
+			});
 
-<p>Having trouble with Pages? Check out the documentation at <a href="https://help.github.com/pages">https://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
-      </section>
-    </div>
+			enemies.forEach(function(enemy){
+				enemy.update();  
+			});
 
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p class="copyright">Testdemo maintained by <a href="https://github.com/IM66">IM66</a></p>
-        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
-      </footer>
-    </div>
+			enemies=enemies.filter(function(enemy){
+				return enemy.active;
+			});
 
-    
+			if (Math.random()<0.1) {
+				enemies.push(Enemy());
+			};
 
-  </body>
+			handleCollisions();
+		}
+	</script>	
+</body>
 </html>
