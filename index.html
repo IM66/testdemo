@@ -2,20 +2,25 @@
 <html>
 <head>
 	<meta charset="UTF-8">
-	<title>Document</title>
+	<meta name="viewport" content="width=320, user-scalable=no,maximum-scale=1.3">
+	<title>打灰机</title>
+	<style type="text/css">
+	*{ margin: 0; padding: 0;}
+	</style>
 </head>
-<body>
+<body id="wrap">
 	<script src="http://libs.baidu.com/jquery/1.9.0/jquery.js"></script>
 	<script src="jquery.hotkeys.js"></script>
 	<script src="key_status.js"></script>	
 	<script type="text/javascript">
 		// 初始化
 		Number.prototype.clamp = function(min, max) {return Math.min(Math.max(this, min), max);};
-		var canvas_width=480;
-		var canvas_height=320;
-		var canvas_Element=$("<canvas width='"+canvas_width+"' height='"+canvas_height+"'>");
+		var canvas_width=document.documentElement.clientWidth|| document.body.clientWidth;
+		var canvas_height=document.documentElement.clientHeight|| document.body.clientHeight;
+		var canvas_Element=$("<canvas width='"+canvas_width+"' height='"+canvas_height+"' id='canvas'>");
 		var canvas=canvas_Element.get(0).getContext("2d");
 		canvas_Element.appendTo("body");
+
 		// 游戏循环
 		var FPS=30;
 		setInterval(function(){
@@ -26,23 +31,29 @@
 		// 创建player
 		var player={
 			color:"#00a",
-			x:270,
-			y:270,
 			width:50,
 			height:50,
+			x:canvas_width/2,
+			y:canvas_height-50,
 			imgUrl:"2.png",
 			draw:function(){
 				var img=new Image();
 				img.src=this.imgUrl;
 				//canvas.fillStyle=this.color;
 				canvas.drawImage(img,this.x,this.y,this.width,this.height);
-			}
+			},
+			update:function(data){this.x=data.pageX-this.width/2}
 		}
 
 		player.explode = function() {
   			this.active = false;
 		};
-		
+
+		// 时间
+		var time={
+			num:0
+		}
+
 		// 炮弹
 		var playerBullets=[];
 		function Bullet(I){
@@ -50,7 +61,7 @@
 			I.xVelocity=0;
 			I.yVelocity=-I.speed;
 			I.width=3;
-			I.height=3;
+			I.height=4;
 			I.color="#000";
 
 			I.inBounds=function(){
@@ -76,7 +87,7 @@
 			var bulletPosition=this.midpoint();
 
 			playerBullets.push(Bullet({
-				speed:5,
+				speed:10,
 				x:bulletPosition.x,
 				y:bulletPosition.y,
 			}));
@@ -93,9 +104,9 @@
 		function Enemy(I){
 			I=I||{};
 			I.active=true;
-			I.age=Math.floor(Math.random()*128);
-			//I.color="#a2b";
-			I.x=canvas_width/4+Math.random()*canvas_width/2;
+			// I.age=Math.floor(Math.random()*128);
+			//I.color="#a2b"; 
+			I.x=parseInt(Math.random()*(canvas_width-2*player.width)+player.width);
 			I.y=0;
 			I.xVelocity=0;
 			I.yVelocity=2;
@@ -118,12 +129,12 @@
 			};
 
 			I.update=function(){
-				I.x+=I.xVelocity;
+				// I.x+=I.xVelocity;
 				I.y+=I.yVelocity;
 
-				I.xVelocity=3*Math.sin(I.age*Math.PI/64);
+				// I.xVelocity=3*Math.sin(I.age*Math.PI/64);
 
-				I.age++;
+				// I.age++;
 
 				I.active=I.active&&I.inBounds();
 			};
@@ -169,11 +180,12 @@
 			if (keydown.right) {
 				player.x+=4;
 			}
-			if (keydown.space) {
+			
+			player.x=player.x.clamp(0,canvas_width-player.width);
+			time.num++;
+			if(time.num%8==0){
 				player.shoot();
 			}
-			player.x=player.x.clamp(0,canvas_width-player.width);
-
 			playerBullets.forEach(function(bullet){
 				bullet.update();
 			});
@@ -189,11 +201,24 @@
 				return enemy.active;
 			});
 
-			if (Math.random()<0.1) {
+			if (time.num%20==0) {
 				enemies.push(Enemy());
 			};
 
 			handleCollisions();
+
+			window.addEventListener('touchstart',function(event){
+				event.preventDefault(); 
+				player.update(event.touches[0]);
+			},false);
+			window.addEventListener('touchmove',function(event){
+				event.preventDefault(); 
+				player.update(event.touches[0]);
+			},false);
+			window.addEventListener('touchend',function(event){
+				event.preventDefault(); 
+				// player.update(event.touches[0]);
+			},false);
 		}
 	</script>	
 </body>
